@@ -16,7 +16,8 @@ const navigations = [
     icon: "description",
     auth: authRoles.agent
   },
-  { name: "Checkbox", path: "/material/checkbox", icon: "event", auth: authRoles.agent },
+  { name: "Checkbox", path: "/material/checkbox", icon: "event", auth: authRoles.admin },
+    { name: "calendrier", path: "/calendrier", icon: "event", auth: authRoles.agent },
   { name: "Dialog", path: "/material/dialog",  icon: "event",
     auth: authRoles.client },
   /* { label: "PAGES", type: "label" },

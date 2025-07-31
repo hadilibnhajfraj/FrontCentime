@@ -8,6 +8,7 @@ import Loadable from "./components/Loadable";
 import MatxLayout from "./components/MatxLayout/MatxLayout";
 import sessionRoutes from "./views/sessions/session-routes";
 import materialRoutes from "app/views/material-kit/MaterialRoutes";
+import CalendrierAgent from "./views/material-kit/checkbox/CalendrierAgent";
 
 // Pages
 const Analytics = Loadable(lazy(() => import("app/views/dashboard/Analytics")));
@@ -16,6 +17,7 @@ const AppButton = Loadable(lazy(() => import("app/views/material-kit/buttons/App
 const AppEchart = Loadable(lazy(() => import("app/views/charts/echarts/AppEchart")));
 const AppAutoComplete = Loadable(lazy(() => import("app/views/material-kit/auto-complete/AppAutoComplete")));
 const EditDocumentPage = Loadable(lazy(() => import("app/views/material-kit/auto-complete/EditDocumentPage")));
+
 const routes = [
   {
     path: "/",
@@ -37,6 +39,7 @@ const routes = [
       { path: "/departement/departement", element: <AppButton />, auth: authRoles.admin },
             { path: "/document/addDocuement", element: <AppAutoComplete />},
      { path: "/document/editDocuement/:id", element: <EditDocumentPage />},
+         { path: "/calendrier", element: <CalendrierAgent />},
  // ✅ Accès protégé uniquement pour ADMIN
       { path: "/departement/departement/:id", element: <AppButton />, auth: authRoles.admin },
       { path: "/charts/echarts", element: <AppEchart />, auth: authRoles.editor }

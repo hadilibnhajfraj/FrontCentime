@@ -13,7 +13,6 @@ import TextField from "@mui/material/TextField";
 import { styled, useTheme } from "@mui/material/styles";
 import LoadingButton from "@mui/lab/LoadingButton";
 
-import MatxLogo from "app/components/MatxLogo";
 import MatxDivider from "app/components/MatxDivider";
 import { Paragraph, Span } from "app/components/Typography";
 import useAuth from "app/hooks/useAuth";
@@ -144,18 +143,23 @@ export default function FirebaseLogin() {
           <Grid size={{ md: 6, xs: 12 }}>
             <div className="cardLeft">
               <Logo>
-                <MatxLogo /> <span>MatX Pro</span>
+                <Logo>
+                  <img
+                    src="../../../../../public/assets/images/logo.png"
+                    alt="Logo CETIME"
+                    style={{ width: 100, height: 100 }}
+                  />
+                </Logo>
               </Logo>
-              <h1 className="mainTitle">Admin Dashboard</h1>
+              <h1 className="mainTitle">
+                Centre Technique des industries Mécaniques et Electriques (CETIME)
+              </h1>
               <div className="features">
-                <div className="item">JWT, Firebase & Auth0 Authentication</div>
-                <div className="item">Clean & Organized code</div>
-                <div className="item">Limitless Pages & Components</div>
+                <div className="item">+216 70 146 023</div>
+                <div className="item">+216 95 486 286</div>
+                <div className="item">+216 70 146 071</div>
               </div>
-              <Span flexGrow={1}></Span>
-              <a href="https://ui-lib.com/" target="_blank" rel="noopener noreferrer">
-                <img src="/assets/images/logos/ui-lib.png" alt="UI Lib Logo" />
-              </a>
+              
             </div>
           </Grid>
 
