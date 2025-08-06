@@ -51,6 +51,28 @@ export default function CalendrierAdmin() {
       console.error("Erreur de chargement admin :", err);
     }
   };
+  const handleDateSelect = async (selectInfo) => {
+    const agentId = prompt("Entrez l'ID de l’agent à assigner :");
+    if (!agentId) return;
+
+    try {
+      await axios.post(
+        "http://localhost:4000/rendezvous/affecter/admin",
+        {
+          agentId,
+          start: selectInfo.startStr,
+          end: selectInfo.endStr
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      fetchData(); // refresh calendar
+    } catch (err) {
+      console.error("Erreur lors de l'ajout de disponibilité", err);
+    }
+  };
 
   return (
     <>
@@ -74,11 +96,12 @@ export default function CalendrierAdmin() {
         </Box>
       </Box>
 
-      {/* 📅 Calendrier */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         events={events}
+        selectable={true}
+        select={handleDateSelect}
         height="auto"
       />
     </>

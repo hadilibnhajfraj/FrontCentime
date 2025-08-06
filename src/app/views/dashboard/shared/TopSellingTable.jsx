@@ -71,7 +71,6 @@ export default function TopSellingTable() {
     <Card elevation={3} sx={{ pt: "20px", mb: 3 }}>
       <CardHeader>
         <Title>Liste des Utilisateurs </Title>
-      
       </CardHeader>
 
       <Box overflow="auto">
@@ -106,7 +105,8 @@ export default function TopSellingTable() {
                   </Box>
                 </TableCell>
 
-                <TableCell colSpan={3}>{user.email}</TableCell>
+                {/* ✅ Correction ici */}
+                <TableCell colSpan={3}>{user.partner?.email ?? "Non défini"}</TableCell>
 
                 <TableCell colSpan={2}>
                   <Small bgcolor={user.active ? bgActive : bgInactive}>
