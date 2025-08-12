@@ -14,245 +14,315 @@ import {
   FormControlLabel,
   Checkbox
 } from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
 import MDEditor from "@uiw/react-md-editor";
 import axios from "axios";
-import { startTransition } from "react";
-import { useNavigate } from "react-router-dom";
 
-const tabLabels = [
-  "Prestation",
-  "Description détaillée",
-  "Interfaces / Risques",
-  "Livrables",
-  "Intervenants",
-  "Suivi Qualité",
-  "Commercial",
-  "Les Échantillons",
-  "Configuration"
-];
-
-export default function AjouterDocumentForm({ documentId }) {
-  const [tabIndex, setTabIndex] = useState(0);
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    numPrestation: "",
-    nom_projet: "",
-    activite: "",
-    client: "",
-    departement: "",
-    iat: "",
-    chefProjet: "",
-    intervenants: "",
-    dateCreation: "",
-    dateDebutPrevue: "",
-    dateFacturation: "",
-    dateOffre: "",
-    dateCloture: "",
-    dateReception: "",
-    etat: "",
-    entete_texte: "",
-    actif: true,
-    type: "",
-    adresse_client: "",
-    reference_bordereau: "",
-    bureau_order: "",
-    t: "",
-    pays: "",
-    date: ""
-  });
-
-  const [clients, setClients] = useState([]);
-  const [departements, setDepartements] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-
-  useEffect(() => {
-    axios.get("http://localhost:4000/api/auth/clients").then((res) => setClients(res.data));
-    axios.get("http://localhost:4000/departments/getAll").then((res) => setDepartements(res.data));
-  }, []);
-
-  useEffect(() => {
-    if (documentId) {
-      axios.get(`http://localhost:4000/dossier/${documentId}`).then((res) => {
-        const d = res.data;
-        setFormData({ ...formData, ...d });
-      });
-    }
-  }, [documentId]);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
-  };
-
-  const handleMarkdownChange = (value) => {
-    setFormData((prev) => ({ ...prev, entete_texte: value }));
-  };
-
- /* const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const url = documentId ? `http://localhost:4000/dossier/${documentId}` : "http://localhost:4000/dossier/";
-      const method = documentId ? "put" : "post";
-      await axios({ method, url, data: formData });
-      alert("Dossier enregistré avec succès");
-      startTransition(() => navigate("/dashboard/default"));
-    } catch (error) {
-      console.error("Erreur :", error);
-      alert("Une erreur est survenue.");
-    }
-  };*/
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  try {
-    // 1. Enregistrer la prestation dans /dossier/
-    const dossierPayload = {
-      numPrestation: formData.numPrestation,
-      nom_projet: formData.nom_projet,
-      activite: formData.activite,
-      client: formData.client,
-      departement: formData.departement,
-      iat: formData.iat,
-      chefProjet: formData.chefProjet,
-      intervenants: formData.intervenants,
-      dateCreation: formData.dateCreation,
-      dateDebutPrevue: formData.dateDebutPrevue,
-      dateFacturation: formData.dateFacturation,
-      dateOffre: formData.dateOffre,
-      dateCloture: formData.dateCloture,
-      dateReception: formData.dateReception,
-      etat: formData.etat,
-      actif: formData.actif
-    };
-
-    const dossierUrl = documentId
-      ? `http://localhost:4000/dossier/${documentId}`
-      : "http://localhost:4000/dossier/";
-    const dossierMethod = documentId ? "put" : "post";
-
-    const dossierResponse = await axios({
-      method: dossierMethod,
-      url: dossierUrl,
-      data: dossierPayload
-    });
-
-    const dossierId = documentId
-      ? documentId
-      : dossierResponse.data?.id || dossierResponse.data?.dossier?.id;
-
-    // 2. Enregistrer le document lié à cette prestation (dans /document/)
-    const documentFormData = new FormData();
-    documentFormData.append("type", formData.type || "");
-    documentFormData.append("adresse_client", formData.adresse_client || "");
-    documentFormData.append("reference_bordereau", formData.reference_bordereau || "");
-    documentFormData.append("bureau_order", formData.bureau_order || "");
-    documentFormData.append("t", formData.t || "");
-    documentFormData.append("pays", formData.pays || "");
-    documentFormData.append("date", formData.date || "");
-    documentFormData.append("entete_texte", formData.entete_texte || "");
-    documentFormData.append("actif", formData.actif);
-    documentFormData.append("dossierId", dossierId);
-
-    if (selectedFile) {
-      documentFormData.append("file", selectedFile);
-    }
-
-    await axios.post("http://localhost:4000/document/", documentFormData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-
-    alert("Dossier et document enregistrés avec succès ✅");
-    startTransition(() => navigate("/dashboard/default"));
-  } catch (error) {
-    console.error("Erreur :", error);
-    alert("❌ Une erreur est survenue.");
-  }
+const BASE = "http://localhost:4000";
+const API = {
+  activities: (q = "") => `${BASE}/routes/activities${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+  departments: () => `${BASE}/routes/departments`,
+  clients: (q = "") => `${BASE}/routes/users/by-group?group=client${q ? `&q=${encodeURIComponent(q)}` : ""}`,
+  dossier: () => `${BASE}/dossier/`
 };
 
-  const handleTabChange = (_, newValue) => setTabIndex(newValue);
+const TABS = ["Prestation", "Description détaillée (à venir)"];
+
+export default function AjouterDocumentForm() {
+  const [tabIndex, setTabIndex] = useState(0);
+
+  // ====== ÉTATS IDENTIQUES AU FORMULAIRE ORIGINEL DE PRESTATION ======
+  const [formData, setFormData] = useState({
+    nom_projet: "",
+    activityId: null,
+    activite: "",
+    date: "",
+    entete_texte: "",
+
+    clientId: null,
+    client: "",
+    adresse_client: "",
+    departmentId: null,
+    departement: "",
+    reference_bordereau: "",
+    bureau_order: "",
+    t: false,
+    iat: "",
+    pays: "Tunisie",
+  });
+
+  const [activities, setActivities] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [countries] = useState(["Tunisie", "France", "Maroc", "Algérie"]);
+
+  const setField = (k, v) => setFormData((p) => ({ ...p, [k]: v }));
+
+  // ====== LOOKUPS IDENTIQUES ======
+  useEffect(() => {
+    axios.get(API.departments()).then((r) => setDepartments(Array.isArray(r.data) ? r.data : []));
+  }, []);
+  useEffect(() => {
+    axios.get(API.activities()).then((r) => setActivities(Array.isArray(r.data) ? r.data : []));
+  }, []);
+  useEffect(() => {
+    axios.get(API.clients()).then((r) => setClients(Array.isArray(r.data) ? r.data : []));
+  }, []);
+
+  const fetchActivities = async (q) => {
+    const { data } = await axios.get(API.activities(q));
+    setActivities(Array.isArray(data) ? data : []);
+  };
+  const fetchClients = async (q) => {
+    const { data } = await axios.get(API.clients(q));
+    setClients(Array.isArray(data) ? data : []);
+  };
+
+  const onClientChange = (_e, opt) => {
+    setField("clientId", opt?.value || null);
+    setField("client", opt?.label || opt?.name || "");
+    const guessAddress = opt?.address || opt?.email || "";
+    if (guessAddress) setField("adresse_client", guessAddress);
+  };
+
+  // ====== SUBMIT IDENTIQUE (payload et routes inchangés) ======
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.nom_projet?.trim()) return alert("Nom du projet est requis.");
+    if (!formData.activityId && !formData.activite) return alert("Sélectionnez l’activité.");
+    if (!formData.clientId && !formData.client) return alert("Sélectionnez le client.");
+    if (!formData.departmentId && !formData.departement)
+      return alert("Sélectionnez le département.");
+
+    try {
+      const payload = {
+        activityId: formData.activityId,
+        departmentId: formData.departmentId,
+        clientId: formData.clientId,
+        activite: formData.activite,
+        departement: formData.departement,
+        client: formData.client,
+
+        nom_projet: formData.nom_projet,
+        date: formData.date,
+        entete_texte: formData.entete_texte,
+        reference_bordereau: formData.reference_bordereau,
+        bureau_order: formData.bureau_order,
+        t: formData.t,
+        iat: formData.iat,
+        pays: formData.pays,
+        adresse_client: formData.adresse_client,
+      };
+
+      console.log("[Dossier] payload envoyé ->", payload);
+
+      await axios.post(API.dossier(), payload);
+      alert("Prestation créée ✅");
+
+      setFormData((f) => ({ ...f, nom_projet: "", date: "", entete_texte: "" }));
+    } catch (err) {
+      console.error("[Dossier] erreur POST /dossier", err?.response?.data || err);
+      alert("❌ Erreur lors de l’enregistrement.");
+    }
+  };
+
+  // Helpers pour valeurs des listes
+  const activitiesList = Array.isArray(activities) ? activities : [];
+  const clientsList = Array.isArray(clients) ? clients : [];
+  const departmentsList = Array.isArray(departments) ? departments : [];
 
   return (
     <Box p={3} bgcolor="#fff" borderRadius={2} boxShadow={2}>
       <Typography variant="h6" gutterBottom>
-        {documentId ? "✏️ Modifier un Document" : "📝 Ajouter un Document"}
+        Créer une prestation
       </Typography>
 
-      <Tabs value={tabIndex} onChange={handleTabChange} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
-        {tabLabels.map((label, index) => (
-          <Tab key={index} label={label} />
-        ))}
+      <Tabs
+        value={tabIndex}
+        onChange={(_, v) => setTabIndex(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        sx={{ mb: 2 }}
+      >
+        {TABS.map((label, i) => <Tab key={i} label={label} />)}
       </Tabs>
 
       <form onSubmit={handleSubmit}>
+        {/* ====== ONGLET 0 : PRESTATION (COPIÉ À L’IDENTIQUE) ====== */}
         {tabIndex === 0 && (
-          <Box>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold", color: "purple" }}>
-              Direction de la Prestation
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}><TextField label="Numéro Prestation" name="numPrestation" value={formData.numPrestation} onChange={handleChange} fullWidth required /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Nom du projet" name="nom_projet" value={formData.nom_projet} onChange={handleChange} fullWidth required /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Activité" name="activite" value={formData.activite} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><FormControl fullWidth><InputLabel>Client</InputLabel><Select name="client" value={formData.client} onChange={handleChange}>{clients.map((cli) => (<MenuItem key={cli.id} value={cli.id}>{cli.name || cli.login}</MenuItem>))}</Select></FormControl></Grid>
-              <Grid item xs={12} md={6}><FormControl fullWidth><InputLabel>Département</InputLabel><Select name="departement" value={formData.departement} onChange={handleChange}>{departements.map((dep) => (<MenuItem key={dep.id} value={dep.name}>{dep.name}</MenuItem>))}</Select></FormControl></Grid>
-              <Grid item xs={12} md={6}><TextField label="IAT" name="iat" value={formData.iat} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Chef du Projet" name="chefProjet" value={formData.chefProjet} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12}><TextField label="Intervenants" name="intervenants" value={formData.intervenants} onChange={handleChange} fullWidth multiline rows={3} /></Grid>
-              {["dateCreation", "dateDebutPrevue", "dateFacturation", "dateOffre", "dateCloture", "dateReception"].map((name) => (
-                <Grid item xs={12} md={6} key={name}>
-                  <TextField label={name} name={name} type="date" value={formData[name]} onChange={handleChange} InputLabelProps={{ shrink: true }} fullWidth />
+          <Grid container spacing={3}>
+            {/* --- COLONNE GAUCHE --- */}
+            <Grid item xs={12} md={6}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Nom du projet"
+                    value={formData.nom_projet}
+                    onChange={(e) => setField("nom_projet", e.target.value)}
+                    fullWidth
+                    required
+                  />
                 </Grid>
-              ))}
-              <Grid item xs={12} md={6}><FormControl fullWidth><InputLabel>État</InputLabel><Select name="etat" value={formData.etat} onChange={handleChange}><MenuItem value="Ouvert">Ouvert</MenuItem><MenuItem value="En cours">En cours</MenuItem><MenuItem value="Terminé">Terminé</MenuItem><MenuItem value="Archivé">Archivé</MenuItem></Select></FormControl></Grid>
+
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={activitiesList}
+                    getOptionLabel={(o) => o?.label ?? ""}
+                    value={
+                      activitiesList.find((a) => String(a.value) === String(formData.activityId)) ||
+                      null
+                    }
+                    onChange={(_, opt) => {
+                      setField("activityId", opt?.value || null);
+                      setField("activite", opt?.label || "");
+                    }}
+                    onInputChange={(_, q) => fetchActivities(q)}
+                    renderInput={(params) => <TextField {...params} label="Activité" fullWidth />}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Date"
+                    type="date"
+                    value={formData.date || ""}
+                    onChange={(e) => setField("date", e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Entête-texte
+                  </Typography>
+                  <Box data-color-mode="light">
+                    <MDEditor
+                      value={formData.entete_texte}
+                      onChange={(v) => setField("entete_texte", v || "")}
+                      height={180}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
             </Grid>
 
-            <Box display="flex" justifyContent="flex-end" mt={4}>
-              <Button
-                variant="contained"
-                onClick={() => {
-                  const requiredFields = ["numPrestation", "nom_projet"];
-                  const isValid = requiredFields.every((field) => formData[field]?.trim() !== "");
-                  if (!isValid) {
-                    alert("Veuillez remplir tous les champs obligatoires de la Prestation.");
-                    return;
-                  }
-                  setTabIndex(1);
-                }}
-              >
-                Suivant
-              </Button>
-            </Box>
-          </Box>
+            {/* --- COLONNE DROITE --- */}
+            <Grid item xs={12} md={6}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={clientsList}
+                    getOptionLabel={(o) => o?.label ?? o?.name ?? ""}
+                    value={
+                      clientsList.find((c) => String(c.value) === String(formData.clientId)) || null
+                    }
+                    onChange={onClientChange}
+                    onInputChange={(_, q) => fetchClients(q)}
+                    renderInput={(params) => <TextField {...params} label="Client" fullWidth />}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Adresse Client"
+                    value={formData.adresse_client}
+                    onChange={(e) => setField("adresse_client", e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Département</InputLabel>
+                    <Select
+                      label="Département"
+                      value={formData.departmentId ?? ""}
+                      onChange={(e) => {
+                        const opt = departmentsList.find(
+                          (d) => String(d.value) === String(e.target.value)
+                        );
+                        setField("departmentId", opt?.value || null);
+                        setField("departement", opt?.label || "");
+                      }}
+                    >
+                      {departmentsList.map((dep) => (
+                        <MenuItem key={dep.value} value={dep.value}>
+                          {dep.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Référence Bordereau (CTI)"
+                    value={formData.reference_bordereau}
+                    onChange={(e) => setField("reference_bordereau", e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Bureau d'ordre"
+                    value={formData.bureau_order}
+                    onChange={(e) => setField("bureau_order", e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!formData.t}
+                        onChange={(e) => setField("t", e.target.checked)}
+                      />
+                    }
+                    label="T"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="IAT"
+                    value={formData.iat}
+                    onChange={(e) => setField("iat", e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={countries}
+                    freeSolo
+                    value={formData.pays || ""}
+                    onChange={(_, val) => setField("pays", val || "")}
+                    onInputChange={(_, val) => setField("pays", val || "")}
+                    renderInput={(params) => <TextField {...params} label="Pays" fullWidth />}
+                  />
+                </Grid>
+              </Grid>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box display="flex" justifyContent="flex-end" mt={1}>
+                <Button type="submit" variant="contained">
+                  Enregistrer
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
         )}
 
+        {/* ====== ONGLET 1 : PLACEHOLDER ====== */}
         {tabIndex === 1 && (
-          <Box>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold", color: "purple" }}>Description détaillée du document</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}><TextField label="Type" name="type" value={formData.type} onChange={handleChange} fullWidth required /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Adresse client" name="adresse_client" value={formData.adresse_client} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Référence Bordereau" name="reference_bordereau" value={formData.reference_bordereau} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Bureau d'ordre" name="bureau_order" value={formData.bureau_order} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="T" name="t" value={formData.t} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Pays" name="pays" value={formData.pays} onChange={handleChange} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><TextField label="Date du document" name="date" type="date" value={formData.date} onChange={handleChange} InputLabelProps={{ shrink: true }} fullWidth /></Grid>
-              <Grid item xs={12} md={6}><Button variant="outlined" component="label" fullWidth>Choisir un fichier<input type="file" hidden onChange={(e) => setSelectedFile(e.target.files[0])} /></Button>{selectedFile && (<Typography variant="body2" mt={1}>📎 Fichier sélectionné : {selectedFile.name}</Typography>)}</Grid>
-              <Grid item xs={12}><Typography variant="subtitle2" sx={{ mb: 1 }}>Entête-texte (contenu détaillé)</Typography><Box data-color-mode="light"><MDEditor value={formData.entete_texte} onChange={(val) => handleMarkdownChange(val)} height={200} /></Box></Grid>
-              <Grid item xs={12}><FormControlLabel control={<Checkbox checked={formData.actif ?? true} onChange={handleChange} name="actif" />} label="Document actif" /></Grid>
-            </Grid>
-            <Box display="flex" justifyContent="space-between" mt={4}>
-              <Button variant="outlined" onClick={() => setTabIndex(0)}>Retour</Button>
-              <Button type="submit" variant="contained" color="primary">{documentId ? "Mettre à jour" : "Enregistrer"}</Button>
-            </Box>
-          </Box>
-        )}
-
-        {tabIndex > 1 && (
-          <Typography color="text.secondary">Contenu de l’onglet « {tabLabels[tabIndex]} » à venir…</Typography>
+          <Typography color="text.secondary">
+            Contenu « {TABS[1]} » à venir…
+          </Typography>
         )}
       </form>
     </Box>
