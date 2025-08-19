@@ -33,7 +33,7 @@ const materialRoutes = [
   { path: "/material/radio", element: <AppRadio /> },
   { path: "/material/slider", element: <AppSlider /> },
   { path: "/document/addDocuement", element: <AppAutoComplete /> },
-  { path: "/material/expansion-panel", element: <AppExpansionPanel /> },
+  { path: "/document/prestation", element: <AppExpansionPanel /> },
   { path: "/material/dialog", element: <AppDialog /> },
   { path: "/material/snackbar", element: <AppSnackbar /> }
 ];

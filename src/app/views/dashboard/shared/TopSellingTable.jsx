@@ -1,129 +1,193 @@
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import Table from "@mui/material/Table";
-import Avatar from "@mui/material/Avatar";
-import TableRow from "@mui/material/TableRow";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import IconButton from "@mui/material/IconButton";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Card,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TablePagination,
+  TableContainer,
+  Avatar,
+  IconButton,
+  Chip,
+  LinearProgress,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
-import Edit from "@mui/icons-material/Edit";
-import { Paragraph } from "app/components/Typography";
-import { useEffect, useState } from "react";
+import EditIcon from "@mui/icons-material/Edit";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-// STYLED COMPONENTS
-const CardHeader = styled(Box)(() => ({
+
+const Header = styled(Box)(({ theme }) => ({
   display: "flex",
-  paddingLeft: "24px",
-  paddingRight: "24px",
-  marginBottom: "12px",
   alignItems: "center",
-  justifyContent: "space-between"
+  justifyContent: "space-between",
+  padding: "16px 20px 8px",
 }));
 
-const Title = styled("span")(() => ({
-  fontSize: "1rem",
-  fontWeight: "500",
-  textTransform: "capitalize"
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  fontSize: "1.05rem",
 }));
 
-const ProductTable = styled(Table)(() => ({
-  minWidth: 400,
-  whiteSpace: "pre",
-  "& small": {
-    width: 50,
-    height: 15,
-    borderRadius: 500,
-    boxShadow: "0 0 2px 0 rgba(0, 0, 0, 0.12), 0 2px 2px 0 rgba(0, 0, 0, 0.24)"
+const NiceTable = styled(Table)(({ theme }) => ({
+  minWidth: 760,
+  "& thead th": {
+    fontWeight: 700,
+    background: theme.palette.action.hover,
   },
-  "& td": { borderBottom: "none" },
-  "& td:first-of-type": { paddingLeft: "16px !important" }
-}));
-
-const Small = styled("small")(({ bgcolor }) => ({
-  width: 50,
-  height: 15,
-  color: "#fff",
-  padding: "2px 8px",
-  borderRadius: "4px",
-  overflow: "hidden",
-  background: bgcolor,
-  boxShadow: "0 0 2px 0 rgba(0, 0, 0, 0.12), 0 2px 2px 0 rgba(0, 0, 0, 0.24)"
+  "& tbody tr:hover": {
+    background: theme.palette.action.hover,
+  },
+  "& tbody tr:nth-of-type(odd)": {
+    background: theme.palette.action.selected,
+  },
+  "& td, & th": {
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
 }));
 
 export default function TopSellingTable() {
   const { palette } = useTheme();
-
-  const bgActive = palette.success.main;
-  const bgInactive = palette.error.main;
   const navigate = useNavigate();
+
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get("http://localhost:4000/api/auth/summary", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setUsers(res.data?.users || []);
+    } catch (err) {
+      console.error(err);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    axios
-      .get("http://localhost:4000/api/auth/summary")
-      .then((res) => setUsers(res.data.users))
-      .catch((err) => console.error(err));
+    fetchUsers();
   }, []);
-  return (
-    <Card elevation={3} sx={{ pt: "20px", mb: 3 }}>
-      <CardHeader>
-        <Title>Liste des Utilisateurs </Title>
-      </CardHeader>
 
-      <Box overflow="auto">
-        <ProductTable>
+  const paged = useMemo(() => {
+    const start = page * rowsPerPage;
+    return users.slice(start, start + rowsPerPage);
+  }, [users, page, rowsPerPage]);
+
+  const handleChangePage = (_, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (e) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setPage(0);
+  };
+
+  return (
+    <Card elevation={3} sx={{ mb: 3 }}>
+      <Header>
+        <Title>Liste des Utilisateurs</Title>
+        <Tooltip title="Rafraîchir">
+          <IconButton onClick={fetchUsers}>
+            <RefreshIcon />
+          </IconButton>
+        </Tooltip>
+      </Header>
+
+      {loading && <LinearProgress sx={{ mx: 2, mb: 1 }} />}
+
+      <TableContainer sx={{ maxHeight: 480 }}>
+        <NiceTable stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell colSpan={4} sx={{ px: 3 }}>
-                Login
+              <TableCell width="42%">Login</TableCell>
+              <TableCell width="38%">Email</TableCell>
+              <TableCell width="12%" align="center">
+                Statut
               </TableCell>
-
-              <TableCell colSpan={2} sx={{ px: 0 }}>
-                Email
-              </TableCell>
-
-              <TableCell colSpan={2} sx={{ px: 0 }}>
-                Status
-              </TableCell>
-
-              <TableCell colSpan={1} sx={{ px: 0 }}>
+              <TableCell width="8%" align="center">
                 Action
               </TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell colSpan={3}>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Avatar>{user.login?.charAt(0).toUpperCase()}</Avatar>
-                    <Paragraph>{user.login}</Paragraph>
+            {!loading && paged.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4}>Aucun utilisateur.</TableCell>
+              </TableRow>
+            )}
+
+            {paged.map((user) => (
+              <TableRow key={user.id} hover>
+                <TableCell sx={{ maxWidth: 320 }}>
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Avatar sx={{ width: 32, height: 32 }}>
+                      {user.login?.[0]?.toUpperCase() || "U"}
+                    </Avatar>
+                    <Typography
+                      noWrap
+                      sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                      title={user.login}
+                    >
+                      {user.login}
+                    </Typography>
                   </Box>
                 </TableCell>
 
-                {/* ✅ Correction ici */}
-                <TableCell colSpan={3}>{user.partner?.email ?? "Non défini"}</TableCell>
-
-                <TableCell colSpan={2}>
-                  <Small bgcolor={user.active ? bgActive : bgInactive}>
-                    {user.active ? "Activé" : "Désactivé"}
-                  </Small>
+                <TableCell sx={{ maxWidth: 360 }} title={user.partner?.email}>
+                  <Typography noWrap sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {user.partner?.email ?? "Non défini"}
+                  </Typography>
                 </TableCell>
 
-                <TableCell colSpan={1}>
-                  <IconButton onClick={() => navigate(`/user-profile/${user.id}`)}>
-                    <Edit color="primary" />
-                  </IconButton>
+                <TableCell align="center">
+                  <Chip
+                    size="small"
+                    label={user.active ? "Activé" : "Désactivé"}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: user.active ? palette.success.main : palette.error.main,
+                      fontWeight: 600,
+                      minWidth: 92,
+                    }}
+                  />
+                </TableCell>
+
+                <TableCell align="center">
+                  <Tooltip title="Éditer">
+                    <IconButton onClick={() => navigate(`/user-profile/${user.id}`)}>
+                      <EditIcon color="primary" />
+                    </IconButton>
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
-        </ProductTable>
-      </Box>
+        </NiceTable>
+      </TableContainer>
+
+      <TablePagination
+        component="div"
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        count={users.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        labelRowsPerPage="Lignes par page"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
+        sx={{ px: 2 }}
+      />
     </Card>
   );
 }

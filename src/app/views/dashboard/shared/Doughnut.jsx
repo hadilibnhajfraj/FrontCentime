@@ -1,62 +1,67 @@
+// components/shared/Doughnut.jsx
 import ReactEcharts from "echarts-for-react";
 import { useTheme } from "@mui/material/styles";
 
-export default function DoughnutChart({ height, color = [] }) {
+export default function DoughnutChart({
+  height = 240,
+  data = [],                 
+  colors = [],               
+  showCenterTotal = true,
+}) {
   const theme = useTheme();
+  const total = (data || []).reduce((a, b) => a + Number(b?.value || 0), 0);
 
   const option = {
-    legend: {
-      bottom: 0,
-      show: true,
-      itemGap: 20,
-      icon: "circle",
-      textStyle: { color: theme.palette.text.secondary, fontSize: 13, fontFamily: "roboto" }
+    color: colors.length ? colors : undefined,
+    tooltip: { 
+      trigger: "item", 
+      backgroundColor: "#fff",
+      borderColor: theme.palette.divider,
+      borderWidth: 1,
+      textStyle: { color: theme.palette.text.primary },
+      formatter: ({ name, value, percent }) => {
+        return `<b>${name}</b><br/>Valeur : ${value.toLocaleString()}<br/>${percent}%`;
+      }
     },
-    tooltip: { show: false, trigger: "item", formatter: "{a} <br/>{b}: {c} ({d}%)" },
-    xAxis: [{ axisLine: { show: false }, splitLine: { show: false } }],
-    yAxis: [{ axisLine: { show: false }, splitLine: { show: false } }],
-
+    legend: { show: false },
     series: [
       {
-        name: "Traffic Rate",
         type: "pie",
-        hoverOffset: 5,
-        radius: ["45%", "72.55%"],
+        radius: ["48%", "72%"],
         center: ["50%", "50%"],
-        avoidLabelOverlap: false,
-        stillShowZeroSum: false,
+        label: { show: false },
         labelLine: { show: false },
-        label: {
-          show: false,
-          fontSize: 13,
-          formatter: "{a}",
-          position: "center",
-          fontFamily: "roboto",
-          color: theme.palette.text.secondary
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: "14",
-            padding: 4,
-            fontWeight: "normal",
-            // formatter: "{b} \n{c} ({d}%)"
-            formatter: "{b} ({d}%)"
+        data,
+      },
+    ],
+    graphic: showCenterTotal
+      ? [
+          {
+            type: "text",
+            left: "center",
+            top: "47%",
+            style: {
+              text: String(total),
+              textAlign: "center",
+              fill: theme.palette.text.primary,
+              fontSize: 18,
+              fontWeight: 700,
+            },
           },
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: "rgba(0, 0, 0, 0.5)"
-          }
-        },
-        data: [
-          { value: 65, name: "Google" },
-          { value: 20, name: "Facebook" },
-          { value: 15, name: "Others" }
+          {
+            type: "text",
+            left: "center",
+            top: "60%",
+            style: {
+              text: "Total",
+              textAlign: "center",
+              fill: theme.palette.text.secondary,
+              fontSize: 12,
+            },
+          },
         ]
-      }
-    ]
+      : undefined,
   };
 
-  return <ReactEcharts style={{ height }} option={{ ...option, color: [...color] }} />;
+  return <ReactEcharts style={{ height }} option={option} />;
 }

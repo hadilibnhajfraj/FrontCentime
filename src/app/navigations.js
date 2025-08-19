@@ -11,15 +11,27 @@ const navigations = [
     auth: authRoles.admin // ✅ visible uniquement pour ADMIN
   },
   {
-    name: "Dossier",
-    path: "/document/addDocuement",
-    icon: "description",
-    auth: authRoles.agent
-  },
+  name: "Prestations",
+  icon: "folder",
+  auth: authRoles.Employee, // ✅ visible uniquement pour AGENT
+  children: [
+    {
+      name: "Liste des Prestations",
+      path: "/document/prestation",
+      icon: "list",
+    },
+    {
+      name: "Ajouter Prestation",
+      path: "/document/addDocuement",
+      icon: "description",
+    },
+  ],
+},
   { name: "Checkbox", path: "/material/checkbox", icon: "event", auth: authRoles.admin },
-    { name: "calendrier", path: "/calendrier", icon: "event", auth: authRoles.agent },
+    { name: "calendrier", path: "/calendrier", icon: "event", auth: authRoles.employee  },
   { name: "Dialog", path: "/material/dialog",  icon: "event",
     auth: authRoles.client },
+     
   /* { label: "PAGES", type: "label" },
   {
     name: "Session/Auth",

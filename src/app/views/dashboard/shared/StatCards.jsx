@@ -77,7 +77,7 @@ export default function StatCards() {
     } else if (role === "ADMIN" || role === "AGENT") {
       // 🟢 Récupérer tous les dossiers
       axios
-        .get("http://localhost:4000/dossier/all", {
+        .get("http://localhost:4000/dossier/prestations", {
           headers: { Authorization: `Bearer ${token}` }
         })
         .then((res) => setDossierCount(res.data.length))
@@ -117,7 +117,6 @@ export default function StatCards() {
                 <Heading>{amount}</Heading>
               </Box>
             </ContentBox>
-          
           </StyledCard>
         </Grid>
       ))}

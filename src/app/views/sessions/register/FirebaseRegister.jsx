@@ -62,7 +62,7 @@ const validationSchema = Yup.object().shape({
   password: Yup.string()
     .min(6, "Password must be 6 character length")
     .required("Password is required!"),
-  role: Yup.string().oneOf(["client", "agent"]).required("Role is required!")
+  role: Yup.string().oneOf(["client", "Employee"]).required("Role is required!")
 });
 
 export default function JwtRegister() {
@@ -162,7 +162,7 @@ export default function JwtRegister() {
                       SelectProps={{ native: true }}
                     >
                       <option value="client">Client</option>
-                      <option value="agent">Agent</option>
+                      <option value="Employee">Employee</option>
                     </TextField>
 
                     <TextField
