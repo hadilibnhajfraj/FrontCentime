@@ -133,27 +133,11 @@ const Layout1Topbar = () => {
             <Menu />
           </StyledIconButton>
 
-          <IconBox>
-            {user?.role?.toLowerCase() === "admin" && (
-              <StyledIconButton>
-                <Badge color="error" badgeContent={gmailUnread} showZero={false} overlap="circular">
-                  <MailOutline />
-                </Badge>
-              </StyledIconButton>
-            )}
-
-            <StyledIconButton>
-              <WebAsset />
-            </StyledIconButton>
-
-            <StyledIconButton>
-              <StarOutline />
-            </StyledIconButton>
-          </IconBox>
+        
         </Box>
 
         <Box display="flex" alignItems="center">
-          <MatxSearchBox />
+       
 
           {user?.role?.toLowerCase() === "admin" && (
             <NotificationProvider>
@@ -162,7 +146,7 @@ const Layout1Topbar = () => {
               </Badge>
             </NotificationProvider>
           )}
-          <ShoppingCart />
+    
 
           <MatxMenu
             menuButton={

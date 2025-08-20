@@ -43,7 +43,8 @@ const routes = [
       { path: "/departement/departement", element: <AppButton />, auth: authRoles.admin },
       { path: "/document/addDocuement", element: <AppAutoComplete /> },
       { path: "/document/editDocuement/:id", element: <EditDocumentPage /> },
-      { path: "/calendrier", element: <CalendrierAgent />, auth: authRoles.employee },
+    { path: "/calendrier", element: <CalendrierAgent />, auth: authRoles.employee },
+
 
       // ✅ Accès protégé uniquement pour ADMIN
       { path: "/departement/departement/:id", element: <AppButton />, auth: authRoles.admin },

@@ -1,5 +1,5 @@
 // src/views/calendrier/CalendrierAdmin.jsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -15,18 +15,19 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
+  MenuItem
 } from "@mui/material";
 import axios from "axios";
 
 const API_BASE = "http://localhost:4000";
 const AFFECT_URL = `${API_BASE}/rendezvous/affecter/admin`;
+const REASSIGN_URL = (id) => `${API_BASE}/rendezvous/${id}/reassign`;
 
 const COLORS = {
   dispo: "#2196f3",
   valide: "#4caf50",
   attente: "#ff9800",
-  annule: "#f44336",
+  annule: "#f44336"
 };
 
 export default function CalendrierAdmin() {
@@ -35,28 +36,25 @@ export default function CalendrierAdmin() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null); // { startStr, endStr }
+  const [selectedEvent, setSelectedEvent] = useState(null); // EventApi (RDV)
+  const [mode, setMode] = useState("assign"); // "assign" | "reassign"
   const token = localStorage.getItem("token");
 
-  // index rapide: { "10": {id:10, name:"NADHIR AZZOUZ", email:"..."}, ... }
-  const agentIndex = useMemo(
-    () => Object.fromEntries(agents.map((a) => [String(a.id), a])),
-    [agents]
-  );
+  const authHeader = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
+
+  // 🔑 Index toujours à jour (indépendant du cycle de rendu)
+  const agentIndexRef = useRef({}); // { "10": {id:10, name:"...", email:"..."} }
 
   useEffect(() => {
-    // Charger d’abord les agents pour que les noms soient disponibles,
-    // puis les données calendrier
     (async () => {
-      await fetchAgents();
-      await fetchData();
+      await fetchAgents(); // met à jour agents + agentIndexRef.current
+      await fetchData();   // utilise agentIndexRef.current immédiatement
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const authHeader = useMemo(
-    () => ({ headers: { Authorization: `Bearer ${token}` } }),
-    [token]
-  );
+  const buildIndex = (list) =>
+    Object.fromEntries((list || []).map((a) => [String(a.id), a]));
 
   const fetchAgents = async () => {
     try {
@@ -64,34 +62,35 @@ export default function CalendrierAdmin() {
         `${API_BASE}/routes/users/by-group?group=employee&limit=200`,
         authHeader
       );
-
       const items = (res.data || [])
         .map((u) => {
           const id = u.id ?? u.value;
           const name =
-            u?.partner?.name ||
-            u?.partner_name ||
-            u?.label ||
-            u?.login ||
-            `Employé #${id}`;
+            u?.partner?.name || u?.partner_name || u?.label || u?.login || `Employé #${id}`;
           const email = u?.partner?.email || u?.email || null;
           return { id, name, email };
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
       setAgents(items);
+      agentIndexRef.current = buildIndex(items); // ✅ prêt pour fetchData()
+      return items;
     } catch (e) {
       console.error("Erreur chargement agents:", e);
       setAgents([]);
+      agentIndexRef.current = {};
+      return [];
     }
   };
 
   const fetchData = async () => {
     try {
-      // 1) disponibilités agents
+      const idx = agentIndexRef.current; // ✅ index fiable
+
+      // Disponibilités (bleu)
       const dispoRes = await axios.get(`${API_BASE}/disponibilite/all`, authHeader);
       const disponibilites = (dispoRes.data || []).map((item) => {
-        const nameFromIndex = agentIndex[String(item.agentId)]?.name;
+        const nameFromIndex = idx[String(item.agentId)]?.name;
         const title = nameFromIndex || item.agentName || `Agent ${item.agentId}`;
         return {
           title,
@@ -99,13 +98,13 @@ export default function CalendrierAdmin() {
           end: item.end,
           backgroundColor: COLORS.dispo,
           borderColor: COLORS.dispo,
+          extendedProps: { kind: "dispo" }
         };
       });
 
-      // 2) RDV vue admin
+      // RDV (vert/orange/rouge)
       const rdvRes = await axios.get(`${API_BASE}/rendezvous/admin`, authHeader);
       const rdvs = (rdvRes.data || []).map((rdv) => {
-        // back peut renvoyer start/end ou dateRdv + duree
         const start = rdv.start || rdv.dateRdv;
         const end =
           rdv.end ||
@@ -119,23 +118,26 @@ export default function CalendrierAdmin() {
 
         const agentName =
           rdv?.agent?.partner?.name ||
-          agentIndex[String(rdv?.agentId)]?.name ||
-          (rdv?.agentId ? `Agent ${rdv.agentId}` : "Équipe");
+          rdv?.agentName ||
+          idx[String(rdv?.agentId)]?.name ||
+          (rdv?.agentId ? `Agent ${rdv.agentId}` : "À affecter");
 
-        const clientName = rdv?.client?.partner?.name || "Client";
-        const title =
-          rdv.title ||
-          (rdv.statut === "valide"
-            ? `RDV confirmé: ${clientName} / ${agentName}`
-            : `RDV: ${clientName} / ${agentName}`);
+        const clientName = rdv?.client?.partner?.name || rdv?.clientName || "Client";
 
         return {
           id: rdv.id,
-          title,
+          title: rdv.title || `RDV: ${clientName} / ${agentName}`,
           start,
           end,
           backgroundColor: color,
           borderColor: color,
+          extendedProps: {
+            kind: "rdv",
+            statut: rdv.statut,
+            agentId: rdv.agentId ?? null,
+            agentName,
+            clientName
+          }
         };
       });
 
@@ -145,48 +147,48 @@ export default function CalendrierAdmin() {
     }
   };
 
-  // Sélection d’un créneau → ouverture du dialog d’affectation
+  // Créneau vide → affecter une dispo
   const handleDateSelect = (selectInfo) => {
+    setMode("assign");
     setSelectedSlot({ startStr: selectInfo.startStr, endStr: selectInfo.endStr });
+    setSelectedEvent(null);
     setSelectedAgentId("");
     setAssignOpen(true);
   };
 
-  // Confirmer l’affectation: envoi au back + MAJ optimiste avec NOM
+  // Clic RDV → réaffectation
+  const handleEventClick = (clickInfo) => {
+    const kind = clickInfo?.event?.extendedProps?.kind;
+    if (kind !== "rdv") return;
+    setMode("reassign");
+    setSelectedEvent(clickInfo.event);
+    const currentAgentId = clickInfo.event.extendedProps?.agentId;
+    setSelectedAgentId(currentAgentId ? String(currentAgentId) : "");
+    setSelectedSlot(null);
+    setAssignOpen(true);
+  };
+
+  // Confirmer (assign OU reassign)
   const confirmAssign = async () => {
-    if (!selectedAgentId || !selectedSlot) return;
+    if (!selectedAgentId) return;
 
     try {
-      await axios.post(
-        AFFECT_URL,
-        {
-          agentId: selectedAgentId,
-          start: selectedSlot.startStr,
-          end: selectedSlot.endStr,
-        },
-        authHeader
-      );
-
-      const a = agentIndex[String(selectedAgentId)];
-      // MAJ optimiste
-      setEvents((prev) => [
-        ...prev,
-        {
-          title: a?.name || `Agent ${selectedAgentId}`,
-          start: selectedSlot.startStr,
-          end: selectedSlot.endStr,
-          backgroundColor: COLORS.dispo,
-          borderColor: COLORS.dispo,
-        },
-      ]);
+      if (mode === "reassign" && selectedEvent) {
+        await axios.put(REASSIGN_URL(selectedEvent.id), { agentId: selectedAgentId }, authHeader);
+      } else if (mode === "assign" && selectedSlot) {
+        await axios.post(
+          AFFECT_URL,
+          { agentId: selectedAgentId, start: selectedSlot.startStr, end: selectedSlot.endStr },
+          authHeader
+        );
+      }
 
       setAssignOpen(false);
       setSelectedSlot(null);
-
-      // puis re-fetch pour la vérité serveur
+      setSelectedEvent(null);
       await fetchData();
     } catch (err) {
-      console.error("Erreur lors de l'affectation/ajout de disponibilité", err);
+      console.error("Erreur affectation/réaffectation:", err);
     }
   };
 
@@ -218,24 +220,37 @@ export default function CalendrierAdmin() {
         events={events}
         selectable
         select={handleDateSelect}
+        eventClick={handleEventClick}
         height="auto"
       />
 
-      {/* Dialog d’affectation d’agent */}
+      {/* Dialog assign / reassign */}
       <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Affecter un agent au créneau sélectionné</DialogTitle>
+        <DialogTitle>
+          {mode === "reassign" ? "Réaffecter un agent à ce RDV" : "Affecter un agent au créneau sélectionné"}
+        </DialogTitle>
         <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
+          {mode === "reassign" && selectedEvent && (
+            <Box mb={2}>
+              <Typography variant="body2" color="text.secondary">
+                {selectedEvent.extendedProps?.clientName
+                  ? `RDV: ${selectedEvent.extendedProps.clientName}`
+                  : selectedEvent.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {new Date(selectedEvent.start).toLocaleString()} → {new Date(selectedEvent.end).toLocaleString()}
+              </Typography>
+            </Box>
+          )}
+
+          <FormControl fullWidth sx={{ mt: 1 }}>
             <InputLabel id="agent-select-label">Agent</InputLabel>
             <Select
               labelId="agent-select-label"
               label="Agent"
               value={selectedAgentId}
               onChange={(e) => setSelectedAgentId(e.target.value)}
-              renderValue={(value) => {
-                const a = agentIndex[String(value)];
-                return a ? a.name : "";
-              }}
+              renderValue={(value) => agentIndexRef.current[String(value)]?.name || ""}
               MenuProps={{ PaperProps: { sx: { maxHeight: 320 } } }}
             >
               {agents.map((a) => (
@@ -257,7 +272,7 @@ export default function CalendrierAdmin() {
         <DialogActions>
           <Button onClick={() => setAssignOpen(false)}>Annuler</Button>
           <Button variant="contained" onClick={confirmAssign} disabled={!selectedAgentId}>
-            Affecter
+            {mode === "reassign" ? "Réaffecter" : "Affecter"}
           </Button>
         </DialogActions>
       </Dialog>

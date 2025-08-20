@@ -4,16 +4,16 @@ const navigations = [
   { name: "Dashboard", path: "/dashboard/default", icon: "dashboard" },
   { name: "User Profile", path: "/user-profile", icon: "person" },
 
-  {
+/*  {
     name: "Départements",
     path: "/departement/departement",
     icon: "apartment",
     auth: authRoles.admin // ✅ visible uniquement pour ADMIN
-  },
+  },*/
   {
   name: "Prestations",
   icon: "folder",
-  auth: authRoles.Employee, // ✅ visible uniquement pour AGENT
+  auth: authRoles.user, // ✅ visible uniquement pour AGENT
   children: [
     {
       name: "Liste des Prestations",
@@ -27,9 +27,9 @@ const navigations = [
     },
   ],
 },
-  { name: "Checkbox", path: "/material/checkbox", icon: "event", auth: authRoles.admin },
+  { name: "calendrier", path: "/material/checkbox", icon: "event", auth: authRoles.admin },
     { name: "calendrier", path: "/calendrier", icon: "event", auth: authRoles.employee  },
-  { name: "Dialog", path: "/material/dialog",  icon: "event",
+  { name: "calendrier", path: "/material/dialog",  icon: "event",
     auth: authRoles.client },
      
   /* { label: "PAGES", type: "label" },
@@ -44,7 +44,7 @@ const navigations = [
     ]
   },*/
 
-  { label: "Components", type: "label" },
+ /* { label: "Components", type: "label" },
   {
     name: "Components",
     icon: "favorite",
@@ -77,7 +77,7 @@ const navigations = [
     icon: "launch",
     type: "extLink",
     path: "http://demos.ui-lib.com/matx-react-doc/"
-  }
+  }*/
 ];
 
 export default navigations;

@@ -73,9 +73,7 @@ export default function Analytics() {
             </HalfBox>
           )}
 
-          <HalfBox>
-            <Campaigns />
-          </HalfBox>
+       
         </FlexRow>
       </ContentBox>
     </Fragment>
