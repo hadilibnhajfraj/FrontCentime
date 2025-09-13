@@ -31,7 +31,7 @@ const navigations = [
     { name: "calendrier", path: "/calendrier", icon: "event", auth: authRoles.employee  },
   { name: "calendrier", path: "/material/dialog",  icon: "event",
     auth: authRoles.client },
-         { name: "Icons", path: "/material/icons", iconText: "I" },
+         { name: "Nos Kpi", path: "/material/icons", icon: "description", },
      
   /* { label: "PAGES", type: "label" },
   {
